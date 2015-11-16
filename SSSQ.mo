@@ -210,6 +210,14 @@ package SSSQ
       when event_order_arrive then
         inv_level := pre(inv_level) + amount;
         event_order_arrive := false;
+        if inv_level > 0 then
+          total_holding_cost := total_holding_cost + (time - last_time) * holding_cost;
+          last_time := time;
+        end if;
+        if inv_level < 0 then
+          total_shortage_cost := total_shortage_cost + (time - last_time) * shortage_cost;
+          last_time := time;
+        end if;
       end when;
       when event_demand then
         inv_level := pre(inv_level) - 2;
@@ -225,13 +233,6 @@ package SSSQ
         end if;
         event_evaluate := false;
       end when;
-      when inv_level > 0 then
-        total_holding_cost := total_holding_cost + (time - last_time) * holding_cost;
-      end when;
-      when inv_level < 0 then
-        total_shortage_cost := total_shortage_cost + (time - last_time) * shortage_cost;
-      end when;
-      last_time := time;
       annotation(Icon(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2})), Diagram(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2})));
     end Inventory;
 
