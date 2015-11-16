@@ -158,62 +158,80 @@ package SSSQ
     end test_case;
 
     model Inventory
-      Inventory.Inventory inventory1 annotation(Placement(visible = true, transformation(origin = {26, 6}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
-      Inv_event_port.Event_demand event_demand1 annotation(Placement(visible = true, transformation(origin = {-66, -6}, extent = {{-10, -10}, {10, 10}}, rotation = 0), iconTransformation(origin = {-66, -6}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
-      Inv_event_port.Event_Evaluate event_Evaluate1 annotation(Placement(visible = true, transformation(origin = {-62, -48}, extent = {{-10, -10}, {10, 10}}, rotation = 0), iconTransformation(origin = {-62, -48}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
-      Inv_event_port.Event_Order_Arrive event_Order_Arrive1 annotation(Placement(visible = true, transformation(origin = {-68, 46}, extent = {{-10, -10}, {10, 10}}, rotation = 0), iconTransformation(origin = {-64, 24}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
-      annotation(Icon(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2})), Diagram(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2}), graphics = {Line(origin = {-17, 35}, points = {{-41, 21}, {41, 21}, {41, -21}, {41, -21}})}));
+      SSSQ.Inv_event_port.Event_demand event_demand1 annotation(Placement(visible = true, transformation(origin = {-80, 20}, extent = {{-10, -10}, {10, 10}}, rotation = 0), iconTransformation(origin = {-80, 20}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
+      SSSQ.Inventory.Inventory inventory1 annotation(Placement(visible = true, transformation(origin = {20, 0}, extent = {{-45, -45}, {45, 45}}, rotation = 0)));
+    equation
+
+      annotation(Icon(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2})), Diagram(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2})));
     end Inventory;
     annotation(Diagram(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2})), Icon(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2}), graphics = {Text(extent = {{-100, 100}, {100, -100}}, textString = "M", fontSize = 200, textStyle = {TextStyle.Bold})}));
   end Example;
 
   package Inventory
     model Inventory
-      parameter Integer small(start = 50, fixed = true);
-      parameter Integer setup_cost(start = 10, fixed = true);
-      parameter Integer big(start = 70, fixed = true);
-      parameter Real incremental_cost(start = 5.0, fixed = true);
-      parameter Real mean_evaluate_time(start = 30.0, fixed = true);
-      parameter Real mean_interdemand(start = 0.7, fixed = true);
-      Integer amount(start = 0);
+      parameter Real mean_interdemand(start = 0.1, fixed = true);
+      parameter Integer setup_cost(start = 30, fixed = true);
+      parameter Real incremental_cost(start = 3.0, fixed = true);
+      parameter Real holding_cost(start = 2, fixed = true);
+      parameter Real shortage_cost(start = 7, fixed = true);
+      parameter Real inter_arrive_time(start = 0.5, fixed = true);
+      parameter Real mean_evaluate_time(start = 1.0, fixed = true);
+      parameter Real item_price(start = 20, fixed = true);
+      parameter Integer small(start = 20, fixed = true);
+      parameter Integer big(start = 30, fixed = true);
       Integer inv_level(start = 100);
+      Integer amount(start = 0);
       Real total_ordering_cost(start = 0);
+      Real total_item_price(start = 0);
+      Real total_holding_cost(start = 0);
+      Real total_shortage_cost(start = 0);
       Real interdemand(start = 0.0);
       Real arrive_time(start = 0.0);
       Real evaluate_time(start = 0.0);
+      Real last_time(start = 0.0);
       Boolean is_evaluate(start = false);
-      Inv_event_port.Event_Order_Arrive event_Order_Arrive1 annotation(Placement(visible = true, transformation(origin = {-68, 36}, extent = {{-10, -10}, {10, 10}}, rotation = 0), iconTransformation(origin = {-68, 36}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
-      Inv_event_port.Event_Evaluate event_Evaluate1 annotation(Placement(visible = true, transformation(origin = {-72, -44}, extent = {{-10, -10}, {10, 10}}, rotation = 0), iconTransformation(origin = {-72, -44}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
-      Inv_event_port.Event_demand event_demand1 annotation(Placement(visible = true, transformation(origin = {-72, 0}, extent = {{-10, -10}, {10, 10}}, rotation = 0), iconTransformation(origin = {-68, 2}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
+      Boolean event_order_arrive(start = false);
+      Boolean event_evaluate(start = false);
+      Boolean event_demand(start = false);
     algorithm
       when time > interdemand then
         interdemand := time + mean_interdemand;
-        event_demand1.signal := true;
+        event_demand := true;
       end when;
       when time > arrive_time and is_evaluate then
         arrive_time := 0;
         is_evaluate := false;
-        event_Order_Arrive1.signal := true;
+        event_order_arrive := true;
       end when;
       when time > evaluate_time then
         evaluate_time := time + mean_evaluate_time;
-        event_Evaluate1.signal := true;
+        event_evaluate := true;
       end when;
-      when event_Order_Arrive1.signal then
+      when event_order_arrive then
         inv_level := pre(inv_level) + amount;
-        event_Order_Arrive1.signal := false;
+        event_order_arrive := false;
       end when;
-      when event_demand1.signal then
+      when event_demand then
         inv_level := pre(inv_level) - 2;
-        event_demand1.signal := false;
+        total_item_price := total_item_price + item_price * 2;
+        event_demand := false;
       end when;
-      when event_Evaluate1.signal then
+      when event_evaluate then
         if inv_level < small then
           amount := big - inv_level;
           total_ordering_cost := total_ordering_cost + amount * incremental_cost + setup_cost;
+          arrive_time := time + inter_arrive_time;
+          is_evaluate := true;
         end if;
-        event_Evaluate1.signal := false;
+        event_evaluate := false;
       end when;
+      when inv_level > 0 then
+        total_holding_cost := total_holding_cost + (time - last_time) * holding_cost;
+      end when;
+      when inv_level < 0 then
+        total_shortage_cost := total_shortage_cost + (time - last_time) * shortage_cost;
+      end when;
+      last_time := time;
       annotation(Icon(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2})), Diagram(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2})));
     end Inventory;
 
@@ -234,8 +252,8 @@ package SSSQ
   package Inv_event_port
     connector Event_Order_Arrive
       input Boolean signal(start = false, fixed = true);
-      Modelica.Blocks.Interfaces.BooleanOutput y annotation(Placement(visible = true, transformation(origin = {-16, 6}, extent = {{-10, -10}, {10, 10}}, rotation = 0), iconTransformation(origin = {-16, 6}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
-      annotation(Icon(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2})), Diagram(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2})));
+      Modelica.Blocks.Interfaces.BooleanOutput y annotation(Placement(visible = true, transformation(origin = {-8.88178e-15, -10}, extent = {{-100, -100}, {100, 100}}, rotation = 0), iconTransformation(origin = {-16, 6}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
+      annotation(Icon(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2})), Diagram(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2}), graphics = {Line(origin = {-25.1691, 10.0135}, points = {{0, 0}})}));
     end Event_Order_Arrive;
 
     connector Event_demand
