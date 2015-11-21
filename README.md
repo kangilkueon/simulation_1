@@ -2,9 +2,9 @@
   - Open Modelica
   
   
-# Assignment #1 Inventory System
+## Assignment #1 Inventory System
   - Open Modelica
 
-# Assignment #2 Multi Server Multi Queue
+## Assignment #2 Multi Server Multi Queue
   - Open Modelica
   - 11/18 ~ 11/22
