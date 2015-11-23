@@ -147,7 +147,9 @@ package SSSQ
       SSSQ.SSSQ_Event_port.Event_Out event_out2 annotation(Placement(visible = true, transformation(origin = {100, 20}, extent = {{-10, -10}, {10, 10}}, rotation = 0), iconTransformation(origin = {100, 0}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
     protected
       Real Server_Finish_Count(start = 0, fixed = true);
+      Real min_server_time(start = 0);
       Integer i(start = 0);
+      Integer idx(start = 0);
     algorithm
       when event_in1.signal then
         i := 0;
@@ -156,22 +158,18 @@ package SSSQ
             Server_Busy[i] := true;
             Server_Time[i] := time + Mean_Server_Time[i];
             event_out1.signal := true;
+            idx := Get_Min_Time(server_count, Server_Time);
+            min_server_time := Server_Time[idx];
             break;
           end if;
         end while;
       end when;
-      i := 0;
-      while i <> server_count loop
-        when time >= Server_Time[i] then
-          Server_Busy[i] := false;
-          event_out1.signal := false;
-          Server_Finish_Count := pre(Server_Finish_Count) + 1;
-        end when;
-      end while;
+      when min_server_time < time then
+        Server_Busy[idx] := false;
+        event_out1.signal := false;
+        Server_Finish_Count := pre(Server_Finish_Count) + 1;
+      end when;
     equation
-      Mean_Server_Time = {1.0, 1.2, 0.7, 0.9};
-      Server_Busy = {false, false, false, false};
-      Server_Time = {0.0, 0.0, 0.0, 0.0};
       event_out2.signal = Out_Check(Server_Finish_Count, pre(Server_Finish_Count));
       annotation(Diagram(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2})), Icon(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2}), graphics = {Rectangle(fillColor = {85, 255, 255}, fillPattern = FillPattern.CrossDiag, lineThickness = 2, extent = {{-100, 60}, {100, -60}}), Text(extent = {{-100, 20}, {100, -20}}, textString = "Server", fontSize = 100, textStyle = {TextStyle.Bold})}));
     end Big_Server;
@@ -237,10 +235,10 @@ package SSSQ
     end test_case;
 
     model MultiServerMultiQueue
-      SSSQ_Model.Start_Model start_Model1 annotation(Placement(visible = true, transformation(origin = {-85, 9}, extent = {{-9, -9}, {9, 9}}, rotation = 0)));
-      SSSQ_Model.End_Model end_Model1 annotation(Placement(visible = true, transformation(origin = {66, 10}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
-      SSSQ_Model.Big_Server big_Server1 annotation(Placement(visible = true, transformation(origin = {6, 10}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
-      SSSQ_Model.Big_Queue big_Queue1 annotation(Placement(visible = true, transformation(origin = {-44, 10}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
+      SSSQ_Model.Start_Model start_Model1(Mean_Interarrive_Time = 1.0, Number_Of_Customer = 1000) annotation(Placement(visible = true, transformation(origin = {-85, 9}, extent = {{-9, -9}, {9, 9}}, rotation = 0)));
+      SSSQ_Model.End_Model end_Model1(Number_Of_Customer = 1000) annotation(Placement(visible = true, transformation(origin = {66, 10}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
+      SSSQ_Model.Big_Server big_Server1(server_count = 4, Mean_Server_Time = {1.0, 1.0, 1.0, 1.0}) annotation(Placement(visible = true, transformation(origin = {6, 10}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
+      SSSQ_Model.Big_Queue big_Queue1(queue_size = 3) annotation(Placement(visible = true, transformation(origin = {-44, 10}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
     equation
       connect(big_Server1.event_out2, end_Model1.event_in1) annotation(Line(points = {{16, 10}, {56, 10}, {56, 10}, {56, 10}}));
       connect(big_Queue1.event_in2, big_Server1.event_out1) annotation(Line(points = {{-34, 6}, {-4, 6}, {-4, 6}, {-4, 6}}));
@@ -314,6 +312,7 @@ package SSSQ
     Integer k(start = 0);
     Integer max(start = 0);
   algorithm
+    max := 0;
     while k <> arr_size loop
       if max < arr[k] then
         result := k;
@@ -339,5 +338,23 @@ package SSSQ
     end while;
     annotation(Icon(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2})), Diagram(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2})));
   end Find_Not_Busy;
+
+  function Get_Min_Time
+    input Integer arr_size;
+    input Real[arr_size] arr;
+    output Integer result;
+  protected
+    Integer k(start = 0);
+    Real min(start = 10000);
+  algorithm
+    while k <> arr_size loop
+      if min > arr[k] then
+        min := arr[k];
+        result := k;
+      end if;
+      k := k + 1;
+    end while;
+    annotation(Icon(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2})), Diagram(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2})));
+  end Get_Min_Time;
   annotation(Icon(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2})), Diagram(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2})));
 end SSSQ;
