@@ -3,7 +3,7 @@ package SSSQ
     model End_Model
       input Boolean event_in1;
       parameter Integer Number_Of_Customer(start = 1);
-      Integer Finish_Count(start = 0, fixed = true);
+      Integer Finish_Count(start = 0);
       Boolean Event1;
     algorithm
       Event1 := edge(event_in1);
@@ -19,8 +19,8 @@ package SSSQ
     model Start_Model
       parameter Real Mean_Interarrive_Time(start = 1.0);
       parameter Integer Number_Of_Customer(start = 1);
-      Integer Generation_Count(start = 0, fixed = true);
-      Real Generation_Time(start = Mean_Interarrive_Time, fixed = true);
+      Integer Generation_Count(start = 0);
+      Real Generation_Time(start = Mean_Interarrive_Time);
       output Boolean event_out1(start = false);
       Boolean Event1(start = false);
     algorithm
@@ -39,31 +39,33 @@ package SSSQ
       parameter Integer queue_size(start = 3);
       input Boolean event_in1, event_in2;
       Integer[queue_size] queue_counts;
-      Integer fuck;
       Integer selected_queue;
       Boolean Event1, Event2;
       output Boolean event_out1(start = false);
+      Boolean trigger;
+    initial algorithm
+      trigger := true;
     algorithm
-      event_out1 := false;
       Event1 := edge(event_in1);
       Event2 := edge(event_in2);
+      event_out1 := false;
       when {Event1, Event2} then
         if Event1 then
-          selected_queue := Get_Min(queue_size, queue_counts);
-          queue_counts[selected_queue] := pre(queue_counts[selected_queue]) + 1;
+          if trigger and event_in2 then
+            event_out1 := true;
+          else
+            selected_queue := Get_Min(queue_size, queue_counts);
+            queue_counts[selected_queue] := pre(queue_counts[selected_queue]) + 1;
+            trigger := false;
+          end if;
         end if;
         if Event2 then
           selected_queue := Get_Max(queue_size, queue_counts);
-          queue_counts[selected_queue] := pre(queue_counts[selected_queue]) - 1;
-          if queue_counts[selected_queue] < 0 then
-            queue_counts[selected_queue] := 0;
+          if queue_counts[selected_queue] > 0 then
+            queue_counts[selected_queue] := pre(queue_counts[selected_queue]) - 1;
+            event_out1 := true;
           end if;
-          event_out1 := true;
         end if;
-      end when;
-      when event_out1 then
-        fuck := pre(fuck) + 1;
-        event_out1 := true;
       end when;
     end Big_Queue;
 
@@ -76,7 +78,7 @@ package SSSQ
       discrete Real[server_count] Server_Time;
       Boolean Event1, Event2, Event3;
       //protected
-      Real Server_Finish_Count(start = 0, fixed = true);
+      Real Server_Finish_Count(start = 0);
       Real min_server_time(start = 1000000000.0);
       Integer i(start = 1);
       Integer idx(start = 1);
@@ -88,15 +90,12 @@ package SSSQ
         Server_Time[i] := 100000000.0;
         i := i + 1;
       end while;
+    initial algorithm
+      event_out1 := true;
     algorithm
-      Event1 := time > 20;
-      // or edge(time > 40) or edge(time > 70);
-      when time > 50 then
-        Event1 := false;
-      end when;
+      Event1 := edge(event_in1);
       Event2 := time > pre(min_server_time);
       Event3 := not Is_All_Server_Busy(server_count, Server_Busy);
-      event_out1 := false;
       event_out2 := false;
       when {Event1, Event2, Event3} then
         if Event1 then
@@ -111,6 +110,9 @@ package SSSQ
             end if;
             i := i + 1;
           end while;
+          if Is_All_Server_Busy(server_count, Server_Busy) then
+            event_out1 := false;
+          end if;
         end if;
         if Event2 then
           Server_Busy[idx] := false;
@@ -118,12 +120,12 @@ package SSSQ
           idx := Get_Min_Time(server_count, Server_Time);
           min_server_time := Server_Time[idx];
           Server_Finish_Count := pre(Server_Finish_Count) + 1;
+          event_out2 := true;
           event_out1 := true;
         end if;
-        if Event3 then
-          event_out2 := true;
-        end if;
       end when;
+    equation
+
     end Big_Server;
     annotation(Diagram(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2})), Icon(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2}), graphics = {Text(extent = {{-100, 100}, {100, -100}}, textString = "M", fontSize = 500, textStyle = {TextStyle.Bold})}));
   end SSSQ_Model;
@@ -131,23 +133,14 @@ package SSSQ
   package Example
     model MultiServerMultiQueue
       SSSQ_Model.Big_Queue big_Queue1(queue_size = 3) annotation(Placement(visible = true, transformation(origin = {-44, 10}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
-      SSSQ_Model.Start_Model start_Model1(Mean_Interarrive_Time = 0.7, Number_Of_Customer = 1000) annotation(Placement(visible = true, transformation(origin = {-85, 9}, extent = {{-9, -9}, {9, 9}}, rotation = 0)));
+      SSSQ_Model.Start_Model start_Model1(Mean_Interarrive_Time = 1.0, Number_Of_Customer = 1000) annotation(Placement(visible = true, transformation(origin = {-85, 9}, extent = {{-9, -9}, {9, 9}}, rotation = 0)));
       SSSQ_Model.End_Model end_Model1(Number_Of_Customer = 1000) annotation(Placement(visible = true, transformation(origin = {66, 10}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
-      //SSSQ_Model.Big_Server big_Server1(server_count = 4, Mean_Server_Time = {1.0, 1.0, 1.0, 1.0}) annotation(Placement(visible = true, transformation(origin = {6, 10}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
-    algorithm
-      //end_Model1.event_in1 := pre(big_Server1.event_out2);
-      //big_Queue1.event_in2 := pre(big_Server1.event_out1);
-      //big_Server1.event_in1 := pre(big_Queue1.event_out1);
-      big_Queue1.event_in1 := pre(start_Model1.event_out1);
-      big_Queue1.event_in2 := false;
-      when time > 50 then
-        big_Queue1.event_in2 := true;
-      end when;
-      when time > 90 then
-        big_Queue1.event_in2 := true;
-      end when;
-      end_Model1.event_in1 := pre(big_Queue1.event_out1);
-      //  big_Server1.event_in1 := pre(start_Model1.event_out1);
+      SSSQ_Model.Big_Server big_Server1(server_count = 3, Mean_Server_Time = {4.0, 5.0, 4.0}) annotation(Placement(visible = true, transformation(origin = {6, 10}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
+    equation
+      big_Queue1.event_in1 = pre(start_Model1.event_out1);
+      big_Queue1.event_in2 = pre(big_Server1.event_out1);
+      big_Server1.event_in1 = pre(big_Queue1.event_out1);
+      end_Model1.event_in1 = pre(big_Server1.event_out2);
     end MultiServerMultiQueue;
     annotation(Diagram(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2})), Icon(coordinateSystem(extent = {{-100, -100}, {100, 100}}, preserveAspectRatio = true, initialScale = 0.1, grid = {2, 2}), graphics = {Text(extent = {{-100, 100}, {100, -100}}, textString = "M", fontSize = 200, textStyle = {TextStyle.Bold})}));
   end Example;
