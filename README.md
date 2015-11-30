@@ -8,3 +8,7 @@
 ## Assignment #2 Multi Server Multi Queue
   - Open Modelica
   - 11/18 ~ 11/22
+
+## Team Project
+  - Open Modelica
+  - 11/30 ~ 
